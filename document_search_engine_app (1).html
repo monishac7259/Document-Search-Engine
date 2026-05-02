@@ -1,0 +1,439 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DocSearch AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a0d14;
+    --surface: #111520;
+    --surface2: #161c2e;
+    --border: rgba(99,120,255,0.18);
+    --accent: #6378ff;
+    --accent2: #a78bfa;
+    --text: #e8ecf8;
+    --muted: #7882a4;
+    --green: #22d3a0;
+    --amber: #f59e0b;
+    --red: #f87171;
+    --mono: 'DM Mono', monospace;
+    --sans: 'Space Grotesk', sans-serif;
+  }
+  body { font-family: var(--sans); background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
+  
+  .app { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+  
+  /* Sidebar */
+  .sidebar { background: var(--surface); border-right: 1px solid var(--border); padding: 0; display: flex; flex-direction: column; }
+  .logo { padding: 24px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+  .logo-icon { width: 32px; height: 32px; background: linear-gradient(135deg, var(--accent), var(--accent2)); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .logo-text { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+  .logo-badge { font-size: 10px; background: rgba(99,120,255,0.2); color: var(--accent); border: 1px solid rgba(99,120,255,0.3); border-radius: 4px; padding: 2px 6px; font-family: var(--mono); margin-left: 6px; }
+  
+  .nav-section { padding: 16px 12px 8px; }
+  .nav-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); padding: 0 8px 8px; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; font-size: 13.5px; color: var(--muted); cursor: pointer; transition: all 0.15s; margin-bottom: 2px; }
+  .nav-item:hover, .nav-item.active { background: rgba(99,120,255,0.12); color: var(--text); }
+  .nav-item.active { color: var(--accent); }
+  .nav-dot { width: 6px; height: 6px; border-radius: 50%; }
+  
+  .stats-box { margin: auto 12px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+  .stats-box .stat { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: 12px; }
+  .stat-val { font-family: var(--mono); font-size: 13px; color: var(--green); font-weight: 500; }
+  
+  /* Main */
+  .main { display: flex; flex-direction: column; }
+  .topbar { padding: 16px 28px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 16px; background: rgba(10,13,20,0.8); backdrop-filter: blur(8px); position: sticky; top: 0; z-index: 10; }
+  .topbar-title { font-size: 15px; font-weight: 600; }
+  .topbar-path { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .status-pill { margin-left: auto; display: flex; align-items: center; gap: 6px; background: rgba(34,211,160,0.1); border: 1px solid rgba(34,211,160,0.25); border-radius: 20px; padding: 4px 10px; font-size: 12px; color: var(--green); }
+  .pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+  
+  .content { padding: 28px; flex: 1; }
+  
+  /* Search bar */
+  .search-wrap { position: relative; margin-bottom: 24px; }
+  .search-input { width: 100%; background: var(--surface); border: 1.5px solid var(--border); border-radius: 12px; padding: 14px 52px 14px 48px; font-family: var(--sans); font-size: 15px; color: var(--text); outline: none; transition: border-color 0.2s; }
+  .search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(99,120,255,0.12); }
+  .search-input::placeholder { color: var(--muted); }
+  .search-icon { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 17px; }
+  .search-btn { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: var(--accent); color: white; border: none; border-radius: 8px; padding: 7px 14px; font-family: var(--sans); font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
+  .search-btn:hover { opacity: 0.85; }
+  
+  /* Filter chips */
+  .filters { display: flex; gap: 8px; margin-bottom: 22px; flex-wrap: wrap; }
+  .chip { padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); color: var(--muted); background: transparent; transition: all 0.15s; font-family: var(--sans); }
+  .chip:hover, .chip.active { background: rgba(99,120,255,0.15); border-color: var(--accent); color: var(--accent); }
+  
+  /* Results grid */
+  .results-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .results-count { font-size: 13px; color: var(--muted); }
+  .results-count span { color: var(--text); font-weight: 600; }
+  .sort-select { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; font-size: 12px; color: var(--muted); font-family: var(--sans); outline: none; cursor: pointer; }
+  
+  .results { display: flex; flex-direction: column; gap: 12px; }
+  .doc-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden; }
+  .doc-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: transparent; border-radius: 12px 0 0 12px; transition: background 0.2s; }
+  .doc-card:hover { border-color: rgba(99,120,255,0.35); transform: translateY(-1px); box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+  .doc-card:hover::before { background: var(--accent); }
+  .doc-card.active { border-color: rgba(99,120,255,0.5); background: var(--surface2); }
+  .doc-card.active::before { background: var(--accent); }
+  
+  .card-top { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 10px; }
+  .doc-icon { width: 38px; height: 38px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .icon-pdf { background: rgba(248,113,113,0.12); }
+  .icon-docx { background: rgba(99,120,255,0.12); }
+  .icon-txt { background: rgba(34,211,160,0.12); }
+  .icon-ppt { background: rgba(245,158,11,0.12); }
+  
+  .card-meta { flex: 1; min-width: 0; }
+  .card-title { font-size: 14.5px; font-weight: 600; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-sub { font-size: 12px; color: var(--muted); display: flex; gap: 10px; }
+  .score-badge { margin-left: auto; display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .score-ring { font-family: var(--mono); font-size: 13px; font-weight: 500; color: var(--green); background: rgba(34,211,160,0.1); border: 1px solid rgba(34,211,160,0.2); border-radius: 6px; padding: 3px 8px; }
+  
+  .card-snippet { font-size: 13px; color: var(--muted); line-height: 1.6; margin-bottom: 12px; }
+  .card-snippet mark { background: rgba(99,120,255,0.25); color: var(--text); border-radius: 3px; padding: 0 2px; }
+  
+  .card-footer { display: flex; align-items: center; gap: 8px; }
+  .tag { font-size: 11px; background: rgba(99,120,255,0.1); border: 1px solid rgba(99,120,255,0.2); color: var(--accent2); border-radius: 4px; padding: 2px 7px; font-family: var(--mono); }
+  .card-date { margin-left: auto; font-size: 11px; color: var(--muted); font-family: var(--mono); }
+  
+  /* Right panel */
+  .panel { background: var(--surface); border-left: 1px solid var(--border); width: 320px; flex-shrink: 0; display: flex; flex-direction: column; }
+  .panel-header { padding: 16px 18px; border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: space-between; }
+  .panel-body { padding: 18px; flex: 1; overflow-y: auto; }
+  
+  .ai-section { background: var(--surface2); border: 1px solid rgba(99,120,255,0.2); border-radius: 10px; padding: 14px; margin-bottom: 16px; }
+  .ai-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--accent2); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .ai-text { font-size: 13px; line-height: 1.65; color: #c0c8e8; }
+  
+  .sim-bar { margin-top: 10px; }
+  .sim-item { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 12px; }
+  .sim-label { color: var(--muted); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sim-track { flex: 2; height: 5px; background: rgba(255,255,255,0.06); border-radius: 10px; overflow: hidden; }
+  .sim-fill { height: 100%; border-radius: 10px; background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+  .sim-pct { font-family: var(--mono); font-size: 11px; color: var(--muted); width: 32px; text-align: right; }
+  
+  .upload-zone { border: 1.5px dashed var(--border); border-radius: 10px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.2s; }
+  .upload-zone:hover { border-color: var(--accent); background: rgba(99,120,255,0.05); }
+  .upload-icon { font-size: 24px; margin-bottom: 8px; }
+  .upload-text { font-size: 13px; color: var(--muted); }
+  .upload-text span { color: var(--accent); }
+  
+  /* Loading overlay */
+  .loading { display: none; align-items: center; justify-content: center; gap: 10px; padding: 12px; background: rgba(99,120,255,0.08); border: 1px solid rgba(99,120,255,0.2); border-radius: 10px; margin-bottom: 16px; }
+  .loading.show { display: flex; }
+  .spinner { width: 18px; height: 18px; border: 2px solid rgba(99,120,255,0.2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 13px; color: var(--accent2); font-family: var(--mono); }
+  
+  .main-layout { display: flex; flex: 1; min-height: 0; }
+  .results-area { flex: 1; overflow-y: auto; }
+  
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.4; }
+  .empty-text { font-size: 14px; }
+
+  .ai-summary-box { background: linear-gradient(135deg, rgba(99,120,255,0.08), rgba(167,139,250,0.08)); border: 1px solid rgba(99,120,255,0.25); border-radius: 12px; padding: 16px; margin-bottom: 20px; }
+  .ai-sum-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--accent2); margin-bottom: 8px; }
+  .ai-sum-text { font-size: 13.5px; line-height: 1.65; color: var(--text); }
+  .ai-sum-thinking { display: flex; gap: 4px; align-items: center; font-size: 12px; color: var(--muted); font-family: var(--mono); }
+  .dot-anim span { animation: blink 1.2s infinite; display: inline-block; }
+  .dot-anim span:nth-child(2) { animation-delay: 0.2s; }
+  .dot-anim span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes blink { 0%,80%,100% { opacity: 0; } 40% { opacity: 1; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">🔍</div>
+      <div>
+        <div class="logo-text">DocSearch <span class="logo-badge">AI</span></div>
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Navigation</div>
+      <div class="nav-item active" onclick="setNav(this)">
+        <div class="nav-dot" style="background:#6378ff"></div> Search
+      </div>
+      <div class="nav-item" onclick="setNav(this)">
+        <div class="nav-dot" style="background:#22d3a0"></div> Documents
+      </div>
+      <div class="nav-item" onclick="setNav(this)">
+        <div class="nav-dot" style="background:#f59e0b"></div> Collections
+      </div>
+      <div class="nav-item" onclick="setNav(this)">
+        <div class="nav-dot" style="background:#f87171"></div> Analytics
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Recent Searches</div>
+      <div class="nav-item" onclick="fillSearch('machine learning algorithms')">machine learning algo...</div>
+      <div class="nav-item" onclick="fillSearch('cloud deployment pipeline')">cloud deployment pipe...</div>
+      <div class="nav-item" onclick="fillSearch('neural network architecture')">neural network arch...</div>
+    </div>
+    <div class="stats-box">
+      <div style="font-size:12px;font-weight:600;margin-bottom:10px;color:var(--text)">System Status</div>
+      <div class="stat"><span style="color:var(--muted);font-size:12px">Documents indexed</span><span class="stat-val">4,821</span></div>
+      <div class="stat"><span style="color:var(--muted);font-size:12px">Vector dimensions</span><span class="stat-val">1,536</span></div>
+      <div class="stat"><span style="color:var(--muted);font-size:12px">Avg latency</span><span class="stat-val">42ms</span></div>
+      <div class="stat"><span style="color:var(--muted);font-size:12px">Model</span><span class="stat-val">ada-v3</span></div>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Semantic Search</div>
+        <div class="topbar-path">workspace / corpus-v2 / search</div>
+      </div>
+      <div class="status-pill"><div class="pulse"></div> AI Engine Online</div>
+    </div>
+
+    <div class="main-layout">
+      <div class="content results-area">
+        <!-- Search bar -->
+        <div class="search-wrap">
+          <span class="search-icon">⌕</span>
+          <input class="search-input" id="searchInput" type="text" placeholder="Search documents semantically... e.g. 'how does gradient descent work'" />
+          <button class="search-btn" onclick="doSearch()">Search</button>
+        </div>
+
+        <!-- Filter chips -->
+        <div class="filters" id="filters">
+          <button class="chip active" onclick="setFilter(this,'All')">All Types</button>
+          <button class="chip" onclick="setFilter(this,'PDF')">📄 PDF</button>
+          <button class="chip" onclick="setFilter(this,'DOCX')">📝 DOCX</button>
+          <button class="chip" onclick="setFilter(this,'TXT')">📃 TXT</button>
+          <button class="chip" onclick="setFilter(this,'PPT')">📊 PPT</button>
+          <button class="chip" onclick="setFilter(this,'2024')">2024</button>
+          <button class="chip" onclick="setFilter(this,'2023')">2023</button>
+        </div>
+
+        <!-- Loading -->
+        <div class="loading" id="loading">
+          <div class="spinner"></div>
+          <span class="loading-text">running semantic search...</span>
+        </div>
+
+        <!-- AI Summary -->
+        <div class="ai-summary-box" id="aiSummary" style="display:none">
+          <div class="ai-sum-label">✦ AI Summary</div>
+          <div class="ai-sum-text" id="aiSummaryText"></div>
+        </div>
+
+        <!-- Results header -->
+        <div class="results-header" id="resultsHeader" style="display:none">
+          <div class="results-count">Found <span id="resultCount">0</span> documents</div>
+          <select class="sort-select">
+            <option>Relevance Score</option>
+            <option>Date (Newest)</option>
+            <option>Date (Oldest)</option>
+            <option>Title A–Z</option>
+          </select>
+        </div>
+
+        <!-- Results -->
+        <div class="results" id="results"></div>
+
+        <!-- Empty state -->
+        <div class="empty-state" id="emptyState">
+          <div class="empty-icon">🔭</div>
+          <div class="empty-text">Enter a query above to search across all indexed documents<br>using AI-powered semantic understanding</div>
+        </div>
+      </div>
+
+      <!-- Right panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <span>AI Insights</span>
+          <span style="font-size:11px;color:var(--muted);font-family:var(--mono)">v2.1</span>
+        </div>
+        <div class="panel-body">
+          <div class="ai-section">
+            <div class="ai-label">✦ Semantic Model</div>
+            <div class="ai-text" id="panelInsight">Select a document or run a search to see AI-generated insights and similarity scores.</div>
+          </div>
+
+          <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text)">Similarity Scores</div>
+          <div class="sim-bar" id="simBars">
+            <div style="font-size:12px;color:var(--muted);text-align:center;padding:8px 0">Run a search to see similarity scores</div>
+          </div>
+
+          <div style="margin-top:20px;margin-bottom:12px;font-size:13px;font-weight:600;color:var(--text)">Upload Document</div>
+          <div class="upload-zone" onclick="simulateUpload()">
+            <div class="upload-icon">☁️</div>
+            <div class="upload-text"><span>Click to upload</span> or drag & drop<br>PDF, DOCX, TXT, PPT supported</div>
+          </div>
+
+          <div style="margin-top:20px">
+            <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text)">Search Tips</div>
+            <div style="font-size:12px;color:var(--muted);line-height:1.8">
+              • Use natural language queries<br>
+              • Ask questions like "What is..."<br>
+              • Try concept-based searches<br>
+              • Filter by document type<br>
+              • Semantic ≠ keyword matching
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DOCS = [
+  { id:1, title:"Introduction to Machine Learning Algorithms", type:"PDF", icon:"📄", iconClass:"icon-pdf", score:0.97, date:"Mar 2024", tags:["ML","AI","Algorithms"], snippet:"...covers supervised and unsupervised learning methods including <mark>gradient descent</mark>, backpropagation, and support vector machines for classification tasks in real-world datasets..." },
+  { id:2, title:"Cloud Computing Architecture Patterns", type:"DOCX", icon:"📝", iconClass:"icon-docx", score:0.93, date:"Jan 2024", tags:["Cloud","AWS","GCP"], snippet:"...microservices and serverless patterns for scalable <mark>cloud deployment</mark>. Covers load balancing, auto-scaling, and CI/CD pipelines for production-grade infrastructure..." },
+  { id:3, title:"Neural Network Design: A Practical Guide", type:"PDF", icon:"📄", iconClass:"icon-pdf", score:0.91, date:"Feb 2024", tags:["DL","Neural Nets","PyTorch"], snippet:"...deep dive into convolutional and recurrent <mark>neural network architectures</mark> with hands-on PyTorch code examples, covering attention mechanisms and transformers..." },
+  { id:4, title:"Internship Report: AI in Cloud Platforms", type:"DOCX", icon:"📝", iconClass:"icon-docx", score:0.88, date:"Dec 2023", tags:["Internship","AI","Cloud"], snippet:"...documents the integration of <mark>machine learning models</mark> with AWS SageMaker and Google Vertex AI platforms for real-time inference and model deployment pipelines..." },
+  { id:5, title:"Semantic Search Engine Implementation", type:"PPT", icon:"📊", iconClass:"icon-ppt", score:0.85, date:"Nov 2023", tags:["NLP","Embeddings","Vector DB"], snippet:"...building a <mark>semantic search</mark> system using OpenAI embeddings, Pinecone vector database, and FAISS index for high-performance document retrieval at scale..." },
+  { id:6, title:"Data Preprocessing for NLP Tasks", type:"TXT", icon:"📃", iconClass:"icon-txt", score:0.79, date:"Oct 2023", tags:["NLP","Python","Data"], snippet:"...tokenization, stemming, and lemmatization pipelines for <mark>natural language processing</mark> with spaCy and NLTK, covering TF-IDF and word2vec embeddings preparation..." },
+  { id:7, title:"REST API Design Best Practices", type:"DOCX", icon:"📝", iconClass:"icon-docx", score:0.72, date:"Sep 2023", tags:["API","Backend","HTTP"], snippet:"...RESTful design principles including proper use of HTTP methods, authentication patterns with JWT, rate limiting strategies, and <mark>API versioning</mark> for production services..." },
+  { id:8, title:"Vector Databases: Pinecone vs Weaviate", type:"PDF", icon:"📄", iconClass:"icon-pdf", score:0.68, date:"Aug 2023", tags:["VectorDB","Search","Index"], snippet:"...comparative analysis of <mark>vector database</mark> solutions for embedding storage and approximate nearest neighbor search, benchmarking query speed and recall metrics..." },
+];
+
+const SUMMARIES = {
+  default: "Your query has been semantically embedded and matched against 4,821 indexed documents using cosine similarity on 1,536-dimensional vectors.",
+  ml: "Found 8 documents covering machine learning, deep learning, and AI algorithms. Top results focus on gradient descent, neural network architectures, and practical ML implementations.",
+  cloud: "Discovered documents related to cloud computing patterns, deployment pipelines, and cloud-native AI services. Includes AWS, GCP, and Azure architecture references.",
+  search: "Retrieved documents about information retrieval, semantic search systems, and vector database implementations using embeddings and approximate nearest neighbor search.",
+  neural: "Semantic search surfaced documents on neural network design, deep learning architectures, and transformer models with practical code implementations."
+};
+
+let activeFilter = 'All';
+let activeCard = null;
+
+function setNav(el) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function setFilter(el, val) {
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  activeFilter = val;
+}
+
+function fillSearch(q) {
+  document.getElementById('searchInput').value = q;
+  doSearch();
+}
+
+function doSearch() {
+  const q = document.getElementById('searchInput').value.trim();
+  if (!q) return;
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('loading').classList.add('show');
+  document.getElementById('aiSummary').style.display = 'none';
+  document.getElementById('resultsHeader').style.display = 'none';
+  document.getElementById('results').innerHTML = '';
+  updatePanel('Analyzing query semantics...', true);
+
+  setTimeout(() => {
+    document.getElementById('loading').classList.remove('show');
+    renderResults(q);
+    updateSummary(q);
+    updatePanel('Search complete. Click any document to see detailed analysis and chunk-level similarity scores.', false);
+    renderSimBars();
+  }, 1200);
+}
+
+function renderResults(q) {
+  const container = document.getElementById('results');
+  let docs = DOCS.slice();
+  if (activeFilter !== 'All') docs = docs.filter(d => d.type === activeFilter || d.date.includes(activeFilter));
+  docs.sort((a,b) => b.score - a.score);
+
+  document.getElementById('resultCount').textContent = docs.length;
+  document.getElementById('resultsHeader').style.display = 'flex';
+
+  container.innerHTML = docs.map(d => `
+    <div class="doc-card" id="card-${d.id}" onclick="selectCard(${d.id})">
+      <div class="card-top">
+        <div class="doc-icon ${d.iconClass}">${d.icon}</div>
+        <div class="card-meta">
+          <div class="card-title">${d.title}</div>
+          <div class="card-sub"><span>${d.type}</span><span>•</span><span>${d.date}</span></div>
+        </div>
+        <div class="score-badge">
+          <div class="score-ring">${Math.round(d.score*100)}%</div>
+        </div>
+      </div>
+      <div class="card-snippet">${d.snippet}</div>
+      <div class="card-footer">
+        ${d.tags.map(t=>`<span class="tag">${t}</span>`).join('')}
+        <span class="card-date">modified ${d.date}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function selectCard(id) {
+  if (activeCard) document.getElementById('card-'+activeCard)?.classList.remove('active');
+  activeCard = id;
+  document.getElementById('card-'+id)?.classList.add('active');
+  const doc = DOCS.find(d => d.id === id);
+  if (doc) {
+    updatePanel(`"${doc.title}" — Semantic score: ${Math.round(doc.score*100)}%. This document was retrieved based on conceptual similarity to your query using cosine similarity of the embedding vectors. Top matching chunks appear in the result preview.`, false);
+    renderSimBars(id);
+  }
+}
+
+function updateSummary(q) {
+  const el = document.getElementById('aiSummary');
+  const text = document.getElementById('aiSummaryText');
+  let summary = SUMMARIES.default;
+  const ql = q.toLowerCase();
+  if (ql.includes('machine learning') || ql.includes('ml') || ql.includes('gradient')) summary = SUMMARIES.ml;
+  else if (ql.includes('cloud') || ql.includes('deploy') || ql.includes('aws')) summary = SUMMARIES.cloud;
+  else if (ql.includes('search') || ql.includes('vector') || ql.includes('embed')) summary = SUMMARIES.search;
+  else if (ql.includes('neural') || ql.includes('deep')) summary = SUMMARIES.neural;
+  text.textContent = summary;
+  el.style.display = 'block';
+}
+
+function updatePanel(msg, thinking) {
+  document.getElementById('panelInsight').textContent = msg;
+}
+
+function renderSimBars(selectedId) {
+  const bars = document.getElementById('simBars');
+  const docs = selectedId ? DOCS.slice().sort((a,b) => b.score - a.score) : DOCS.slice(0,5).sort((a,b) => b.score - a.score);
+  bars.innerHTML = docs.slice(0,6).map(d => `
+    <div class="sim-item">
+      <div class="sim-label" title="${d.title}">${d.title.slice(0,24)}...</div>
+      <div class="sim-track"><div class="sim-fill" style="width:${Math.round(d.score*100)}%"></div></div>
+      <div class="sim-pct">${Math.round(d.score*100)}%</div>
+    </div>
+  `).join('');
+}
+
+function simulateUpload() {
+  const zone = document.querySelector('.upload-zone');
+  zone.innerHTML = '<div class="upload-icon">⏳</div><div class="upload-text">Processing & indexing document...</div>';
+  setTimeout(() => {
+    zone.innerHTML = '<div class="upload-icon">✅</div><div class="upload-text" style="color:var(--green)">Document indexed successfully!<br><span style="color:var(--muted)">4,822 documents in corpus</span></div>';
+    setTimeout(() => {
+      zone.innerHTML = '<div class="upload-icon">☁️</div><div class="upload-text"><span>Click to upload</span> or drag & drop<br>PDF, DOCX, TXT, PPT supported</div>';
+    }, 2500);
+  }, 1800);
+}
+
+document.getElementById('searchInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doSearch();
+});
+</script>
+</body>
+</html>
